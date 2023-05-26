@@ -1,60 +1,108 @@
+import csv
+import boto3
+import requests
 
-import configparser
-import dns.resolver
-import dns.exception
+# AWS S3 bucket information
+bucket_name = 'nameo-data'
+folder_with_files = 'domains/'
+tld_file = 'tld/tld.csv'
+location_file = 'location'
 
-def is_domain_registered(domain):
-    config_file = "config.ini"  # Path to the configuration file
-    dns_servers = ["8.8.8.8", "8.8.4.4", "208.67.222.222", "208.67.220.220"]  # List of DNS servers
+# Initialize AWS S3 client
+s3 = boto3.client('s3')
 
-    # Read dns_switch_after value from the configuration file
-    config = configparser.ConfigParser()
-    config.read(config_file)
-    dns_switch_after = int(config.get("DNS", "dns_switch_after"))
+def read_file_from_s3(bucket, key):
+    response = s3.get_object(Bucket=bucket, Key=key)
+    return response['Body'].read().decode('utf-8')
 
-    # Retrieve the DNS server to use based on the round-robin selection
-    index = 0
-    if dns_switch_after > 0:
-        with open("call_counter.txt", "r+") as file:
-            num_calls = file.read().strip()
-            if num_calls:
-                num_calls = int(num_calls)
-            else:
-                num_calls = 0
-            file.seek(0)
-            file.write(str(num_calls + 1))
-            file.truncate()
-            index = num_calls // dns_switch_after % len(dns_servers)
+def write_file_to_s3(bucket, key, data):
+    s3.put_object(Body=data, Bucket=bucket, Key=key)
 
-    dns_server = dns_servers[index]
-
-    # Configure DNS resolver with the selected DNS server
-    resolver = dns.resolver.Resolver()
-    resolver.nameservers = [dns_server]
-
+def read_location():
     try:
-        answers = resolver.query(domain, "NS")
-        return True  # Domain has at least one nameserver configured
-    except dns.resolver.NoAnswer:
-        return "maybe"  # Domain might not have any nameserver configured
-    except dns.exception.DNSException:
-        return False  # An error occurred during DNS resolution
+        location = int(read_file_from_s3(bucket_name, location_file))
+    except:
+        location = 0
+    return location
 
-def generate_domain_names(names_file, tlds_file):
-    domain_names = []
-    
-    # Read names from the names file
-    with open(names_file, 'r') as file:
-        names = file.read().splitlines()
-    
-    # Read TLDs from the TLD file
-    with open(tlds_file, 'r') as file:
-        tlds = file.read().splitlines()
-    
-    # Generate domain names by combining names and TLDs
-    for name in names:
-        for tld in tlds:
-            domain_names.append(name + '.' + tld)
-    
-    return domain_names
+def write_location(location):
+    write_file_to_s3(bucket_name, location_file, str(location))
 
+def combine_domains_tlds():
+    # Read the TLD file
+    tld_data = read_file_from_s3(bucket_name, tld_file)
+    tlds = list(csv.reader(tld_data.splitlines()))
+
+    # Get the starting location
+    location = read_location()
+
+    # Read the domain files
+    domain_files = s3.list_objects_v2(Bucket=bucket_name, Prefix=folder_with_files)['Contents']
+    domain_files = [obj['Key'] for obj in domain_files]
+
+    for i in range(location, len(domain_files)):
+        domain_file = domain_files[i]
+        domain_data = read_file_from_s3(bucket_name, domain_file)
+        domains = domain_data.split('\n')
+
+        for domain in domains:
+            for tld in tlds:
+                if domain:
+                    domain_tld = f"{domain}.{tld[0]}"
+                    domain_checker(domain_tld, tld[1])
+
+        location = i + 1
+        write_location(location)
+
+
+
+
+def domain_checker(domain, rdap_url=None):
+    tld = domain.split('.')[-1]
+
+    # Perform name server check
+    # Replace this with your own name server check logic
+    ns_check_result = perform_name_server_check(domain)
+
+    # Perform WHOIS lookup
+    # Replace this with your own WHOIS lookup logic
+    whois_result = perform_whois_lookup(domain)
+
+    # Perform RDAP request
+    if rdap_url is None or not rdap_url.startswith("http"):
+        rdap_url = f"https://root.rdap.org/domain/{tld}"
+    rdap_result = perform_rdap_request(domain, rdap_url)
+
+    # Determine if the domain is registered based on the results
+    is_registered = ns_check_result or whois_result or rdap_result
+
+    # Pass the response to the recorder function
+    recorder(domain, is_registered)
+
+
+def perform_name_server_check(domain):
+    # Replace this with your name server check logic
+    # Return True or False based on the check result
+    return False
+
+
+def perform_whois_lookup(domain):
+    # Replace this with your WHOIS lookup logic
+    # Return True or False based on the lookup result
+    return False
+
+
+def perform_rdap_request(domain, rdap_url):
+    try:
+        response = requests.get(rdap_url)
+        # Replace this with your RDAP request parsing logic
+        # Return True or False based on the RDAP response
+        return True
+    except requests.exceptions.RequestException:
+        return False
+
+
+def recorder(domain, is_registered):
+    # Replace this with your recording logic
+    # Print or save the domain and is_registered value
+    print(f"Domain: {domain}, Is Registered: {is_registered}")

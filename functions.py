@@ -1,13 +1,6 @@
-def collect_data():
-    # Collect data from the user
-    # Return a dictionary of data
-    pass
 
-def domain_check():
-    # Check if domain is available
-    # Return True or False
-    domains = ["domain1.com", "domain2.com", "domain3.com"]
-    return domains
+
+import socket
 
 def amazon_check():
     # Check if domain is available on Amazon
@@ -21,3 +14,19 @@ def trademark_check():
     check = True
     return check
 
+
+def domain_check(prompt, extensions):
+    available_domains = {}
+    for extension in extensions:
+        full_domain = f"{prompt}.{extension}"
+        is_registered = domain_lookup(full_domain)
+        available_domains[extension] = is_registered
+
+    return available_domains
+
+def domain_lookup(domain):
+    try:
+        socket.gethostbyname(domain)
+        return False  # Domain is registered
+    except socket.error:
+        return True  # Domain is not registered

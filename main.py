@@ -23,19 +23,25 @@ if not cicd:
     # Get the values for prompt and extensions
     prompt = variables.get('prompt')
     extensions_str = variables.get('extensions')
+    marketplaces_str = variables.get('marketplaces')
 
     # Convert the extensions string to a list
     extensions = extensions_str.split(',')
+    marketplaces = marketplaces_str.split(',')
 
 from source.brand import *
 from source.domain import *
 from source.legal import *
+from source.health import *
 
 def main():
+    health_main()
+
+
     domains = domain_main(prompt, extensions)
     trademark = trademark_main(prompt)
     patent = patent_main(prompt)
-    brand = brand_main(prompt)
+    brand = brand_main(prompt, marketplaces)
 
 
 

@@ -11,22 +11,21 @@
     - name: Configure AWS CLI
       become: yes
       shell: |
-        aws configure set aws_access_key_id "{{ lookup('env', 'AWS_ACCESS_KEY_ID') }}"
-        aws configure set aws_secret_access_key "{{ lookup('env', 'AWS_SECRET_ACCESS_KEY') }}"
-        aws configure set default.region "{{ lookup('env', 'AWS_REGION') }}"
-
+        aws configure set aws_access_key_id "{{ secrets.AWS_ACCESS_KEY_ID }}"
+        aws configure set aws_secret_access_key "{{ secrets.AWS_SECRET_ACCESS_KEY }}"
+        aws configure set default.region "{{ secrets.AWS_REGION }}"
 
     - name: Package Lambda function
       become: yes
-      command: aws cloudformation package --template-file template.yml --s3-bucket my-bucket --output-template-file packaged-template.yml
+      command: aws cloudformation package --template-file template.yml --s3-bucket "{{ secrets.S3_BUCKET }}" --output-template-file packaged-template.yml
 
     - name: Deploy Lambda function
       become: yes
-      command: aws cloudformation deploy --template-file packaged-template.yml --stack-name my-stack --capabilities CAPABILITY_IAM
+      command: aws cloudformation deploy --template-file packaged-template.yml --stack-name "{{ secrets.STACK_NAME }}" --capabilities CAPABILITY_IAM
 
     - name: Create API Gateway
       become: yes
-      command: aws apigateway create-rest-api --name "My API" --region "{{ lookup('env', 'AWS_REGION') }}"
+      command: aws apigateway create-rest-api --name "My API" --region "{{ secrets.AWS_REGION }}"
       register: api_gateway
 
     - name: Get API Gateway ID
@@ -35,7 +34,7 @@
 
     - name: Create API Gateway deployment
       become: yes
-      command: aws apigateway create-deployment --rest-api-id "{{ api_gateway_id }}" --stage-name dev
+      command: aws apigateway create-deployment --rest-api-id "{{ api_gateway_id }}" --stage-name "{{ secrets.API_GATEWAY_STAGE }}"
 
     - name: Create API Gateway resource
       become: yes
@@ -52,7 +51,7 @@
 
     - name: Create API Gateway integration
       become: yes
-      command: aws apigateway put-integration --rest-api-id "{{ api_gateway_id }}" --resource-id "{{ api_resource_id }}" --http-method GET --type AWS --integration-http-method POST --uri "arn:aws:apigateway:{{ lookup('env', 'AWS_REGION') }}:lambda:path/2015-03-31/functions/{{ lambda_arn }}/invocations"
+      command: aws apigateway put-integration --rest-api-id "{{ api_gateway_id }}" --resource-id "{{ api_resource_id }}" --http-method GET --type AWS --integration-http-method POST --uri "arn:aws:apigateway:{{ secrets.AWS_REGION }}:lambda:path/2015-03-31/functions/{{ lambda_arn }}/invocations"
 
     - name: Create API Gateway method response
       become: yes
@@ -64,4 +63,4 @@
 
     - name: Get API Gateway URL
       become: yes
-      command: aws apigateway get-stage --rest-api-id "{{ api_gateway_id }}" --stage-name dev
+      command: aws apigateway get-stage --rest-api-id "{{ api_gateway_id }}" --stage-name "{{ secrets.API_GATEWAY_STAGE }}"

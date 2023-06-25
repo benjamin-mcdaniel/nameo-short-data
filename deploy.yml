@@ -3,6 +3,9 @@
   gather_facts: false
 
   tasks:
+    - name: Install community.aws collection
+      command: ansible-galaxy collection install community.aws
+
     - name: Install AWS CLI
       become: yes
       pip:

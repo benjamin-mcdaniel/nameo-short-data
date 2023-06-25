@@ -10,9 +10,11 @@
 
     - name: Configure AWS CLI
       become: yes
-      command: aws configure set aws_access_key_id "{{ lookup('env', 'AWS_ACCESS_KEY_ID') }}" && aws configure set aws_secret_access_key "{{ lookup('env', 'AWS_SECRET_ACCESS_KEY') }}" && aws configure set default.region "{{ lookup('env', 'AWS_REGION') }}"
-      args:
-        executable: /bin/bash
+      shell: |
+        aws configure set aws_access_key_id "{{ lookup('env', 'AWS_ACCESS_KEY_ID') }}"
+        aws configure set aws_secret_access_key "{{ lookup('env', 'AWS_SECRET_ACCESS_KEY') }}"
+        aws configure set default.region "{{ lookup('env', 'AWS_REGION') }}"
+
 
     - name: Package Lambda function
       become: yes

@@ -5,7 +5,7 @@ on:
       - main
 
 jobs:
-  deploy:
+  Deploy_Lambda_and_Gateway:
     runs-on: ubuntu-latest
     environment: main
     steps:

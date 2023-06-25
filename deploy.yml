@@ -3,8 +3,6 @@
   gather_facts: false
 
   tasks:
-    - name: Install community.aws collection
-      command: ansible-galaxy collection install community.aws
 
     - name: Install AWS CLI
       become: yes
@@ -17,6 +15,9 @@
         aws configure set aws_access_key_id "{{ lookup('env', 'AWS_ACCESS_KEY_ID') }}"
         aws configure set aws_secret_access_key "{{ lookup('env', 'AWS_SECRET_ACCESS_KEY') }}"
         aws configure set default.region "{{ lookup('env', 'AWS_REGION') }}"
+
+    - name: Install community.aws collection
+      command: ansible-galaxy collection install community.aws
 
     - name: Create API Gateway
       become: yes

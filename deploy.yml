@@ -15,52 +15,84 @@
         aws configure set aws_secret_access_key "{{ lookup('env', 'AWS_SECRET_ACCESS_KEY') }}"
         aws configure set default.region "{{ lookup('env', 'AWS_REGION') }}"
 
-    - name: Package Lambda function
-      become: yes
-      command: aws cloudformation package --template-file template.yml --s3-bucket "{{ lookup('env', 'S3_BUCKET') }}" --output-template-file packaged-template.yml
-
-    - name: Deploy Lambda function
-      become: yes
-      command: aws cloudformation deploy --template-file packaged-template.yml --stack-name "{{ lookup('env', 'STACK_NAME') }}" --capabilities CAPABILITY_IAM
-
     - name: Create API Gateway
       become: yes
-      command: aws apigateway create-rest-api --name "My API" --region "{{ lookup('env', 'AWS_REGION') }}"
+      community.aws.apigatewayv2_api:
+        name: "nameoshortdata"
+        protocol_type: HTTP
+        state: present
+        region: "{{ lookup('env', 'AWS_REGION') }}"
       register: api_gateway
 
     - name: Get API Gateway ID
       set_fact:
-        api_gateway_id: "{{ api_gateway['restApiId'] }}"
+        api_gateway_id: "{{ api_gateway.api.id }}"
 
     - name: Create API Gateway deployment
       become: yes
-      command: aws apigateway create-deployment --rest-api-id "{{ api_gateway_id }}" --stage-name "{{ lookup('env', 'API_GATEWAY_STAGE') }}"
+      community.aws.apigatewayv2_stage:
+        name: "{{ lookup('env', 'API_GATEWAY_STAGE') }}"
+        api_id: "{{ api_gateway_id }}"
+        state: present
+        region: "{{ lookup('env', 'AWS_REGION') }}"
 
     - name: Create API Gateway resource
       become: yes
-      command: aws apigateway create-resource --rest-api-id "{{ api_gateway_id }}" --parent-id "{{ api_gateway['parentId'] }}" --path-part "my-resource"
+      community.aws.apigatewayv2_resource:
+        api_id: "{{ api_gateway_id }}"
+        parent_id: "{{ api_gateway.api.default_route_id }}"
+        path_part: "my-resource"
+        state: present
+        region: "{{ lookup('env', 'AWS_REGION') }}"
       register: api_resource
 
     - name: Get API Gateway resource ID
       set_fact:
-        api_resource_id: "{{ api_resource['id'] }}"
+        api_resource_id: "{{ api_resource.resource_id }}"
 
     - name: Create API Gateway method
       become: yes
-      command: aws apigateway put-method --rest-api-id "{{ api_gateway_id }}" --resource-id "{{ api_resource_id }}" --http-method GET --authorization-type NONE
-
-    - name: Create API Gateway integration
-      become: yes
-      command: aws apigateway put-integration --rest-api-id "{{ api_gateway_id }}" --resource-id "{{ api_resource_id }}" --http-method GET --type AWS --integration-http-method POST --uri "arn:aws:apigateway:{{ lookup('env', 'AWS_REGION') }}:lambda:path/2015-03-31/functions/{{ lambda_arn }}/invocations"
+      community.aws.apigatewayv2_integration:
+        api_id: "{{ api_gateway_id }}"
+        route_id: "{{ api_resource_id }}"
+        integration_type: AWS_PROXY
+        integration_method: POST
+        integration_uri: "arn:aws:apigateway:{{ lookup('env', 'AWS_REGION') }}:lambda:path/2015-03-31/functions/{{ lambda_arn }}/invocations"
+        state: present
+        region: "{{ lookup('env', 'AWS_REGION') }}"
+        http_method: GET
 
     - name: Create API Gateway method response
       become: yes
-      command: aws apigateway put-method-response --rest-api-id "{{ api_gateway_id }}" --resource-id "{{ api_resource_id }}" --http-method GET --status-code 200 --response-models application/json=Empty
+      community.aws.apigatewayv2_integration_response:
+        api_id: "{{ api_gateway_id }}"
+        route_id: "{{ api_resource_id }}"
+        integration_id: "{{ api_resource.integration_id }}"
+        http_method: GET
+        status_code: 200
+        state: present
+        region: "{{ lookup('env', 'AWS_REGION') }}"
 
     - name: Create API Gateway integration response
       become: yes
-      command: aws apigateway put-integration-response --rest-api-id "{{ api_gateway_id }}" --resource-id "{{ api_resource_id }}" --http-method GET --status-code 200 --response-templates application/json=""
+      community.aws.apigatewayv2_integration_response:
+        api_id: "{{ api_gateway_id }}"
+        route_id: "{{ api_resource_id }}"
+        integration_id: "{{ api_resource.integration_id }}"
+        http_method: GET
+        status_code: 200
+        response_templates:
+          application/json: ""
+        state: present
+        region: "{{ lookup('env', 'AWS_REGION') }}"
 
     - name: Get API Gateway URL
       become: yes
-      command: aws apigateway get-stage --rest-api-id "{{ api_gateway_id }}" --stage-name "{{ lookup('env', 'API_GATEWAY_STAGE') }}"
+      community.aws.apigatewayv2_stage_facts:
+        api_id: "{{ api_gateway_id }}"
+        region: "{{ lookup('env', 'AWS_REGION') }}"
+      register: api_stage
+
+    - name: Print API Gateway URL
+      debug:
+        var: api_stage.stages[0].invoke_url

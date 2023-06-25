@@ -39,7 +39,7 @@
 
     - name: Create API Gateway resource
       become: yes
-      community.aws.apigatewayv2_resource:
+      community.aws.apigateway_resource:
         api_id: "{{ api_gateway_id }}"
         parent_id: "{{ api_gateway.api.default_route_id }}"
         path_part: "my-resource"
@@ -53,7 +53,7 @@
 
     - name: Create API Gateway method
       become: yes
-      community.aws.apigatewayv2_integration:
+      community.aws.apigateway_integration:
         api_id: "{{ api_gateway_id }}"
         route_id: "{{ api_resource_id }}"
         integration_type: AWS_PROXY
@@ -65,7 +65,7 @@
 
     - name: Create API Gateway method response
       become: yes
-      community.aws.apigatewayv2_integration_response:
+      community.aws.apigateway_integration_response:
         api_id: "{{ api_gateway_id }}"
         route_id: "{{ api_resource_id }}"
         integration_id: "{{ api_resource.integration_id }}"
@@ -76,7 +76,7 @@
 
     - name: Create API Gateway integration response
       become: yes
-      community.aws.apigatewayv2_integration_response:
+      community.aws.apigateway_integration_response:
         api_id: "{{ api_gateway_id }}"
         route_id: "{{ api_resource_id }}"
         integration_id: "{{ api_resource.integration_id }}"
@@ -89,7 +89,7 @@
 
     - name: Get API Gateway URL
       become: yes
-      community.aws.api_gateway:
+      community.aws.api_gateway_stage_facts:
         api_id: "{{ api_gateway_id }}"
         region: "{{ lookup('env', 'AWS_REGION') }}"
       register: api_stage

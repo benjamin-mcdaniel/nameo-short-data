@@ -20,7 +20,7 @@ jobs:
         run: pip install ansible
 
       - name: Deploy using Ansible
-        run: ansible-playbook -i localhost, deploy.yml
+        run: ansible-playbook -i 127.0.0.1, deploy.yml
         env:
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}

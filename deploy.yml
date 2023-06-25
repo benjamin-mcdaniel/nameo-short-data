@@ -5,13 +5,6 @@
     aws_region: us-west-2
 
   tasks:
-    - name: Set AWS environment variables
-      env:
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        AWS_DEFAULT_REGION: "{{ aws_region }}"
-      run_once: true
-
     - name: Install AWS CLI
       become: yes
       pip:
@@ -69,4 +62,6 @@
       become: yes
       command: aws apigateway put-integration-response --rest-api-id "{{ api_gateway_id }}" --resource-id "{{ api_resource_id }}" --http-method GET --status-code 200 --response-templates application/json=""
 
-   
+    - name: Get API Gateway URL
+      become: yes
+      command: aws apigateway get-stage --rest-api-id "{{ api_gateway_id }}" --stage-name dev

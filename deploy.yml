@@ -1,56 +1,72 @@
 - name: Deploy Lambda Function and API Gateway
   hosts: localhost
   gather_facts: false
+  vars:
+    aws_region: us-west-2
+
   tasks:
+    - name: Set AWS environment variables
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        AWS_DEFAULT_REGION: "{{ aws_region }}"
+      run_once: true
+
     - name: Install AWS CLI
       become: yes
       pip:
         name: awscli
 
-    - name: Set AWS environment variables
-      shell: echo "export AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}" >> $HOME/.bashrc && echo "export AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> $HOME/.bashrc
-      environment:
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-
     - name: Configure AWS CLI
-      environment:
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      command: aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }} && aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }} && aws configure set region us-west-2
+      become: yes
+      command: aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }} && aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }} && aws configure set default.region "{{ aws_region }}"
+      args:
+        executable: /bin/bash
 
-    - name: Deploy Lambda Function
-      environment:
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      command: aws lambda create-function --function-name ${LAMBDA_FUNCTION_NAME} --runtime python3.8 --handler ${LAMBDA_HANDLER} --role ${LAMBDA_ROLE} --zip-file fileb://${LAMBDA_ZIP_FILE}
+    - name: Package Lambda function
+      become: yes
+      command: aws cloudformation package --template-file template.yml --s3-bucket my-bucket --output-template-file packaged-template.yml
+
+    - name: Deploy Lambda function
+      become: yes
+      command: aws cloudformation deploy --template-file packaged-template.yml --stack-name my-stack --capabilities CAPABILITY_IAM
 
     - name: Create API Gateway
-      environment:
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      command: aws apigatewayv2 create-api --name ${API_GATEWAY_NAME} --protocol-type HTTP --target ${API_GATEWAY_TARGET} --region us-west-2
+      become: yes
+      command: aws apigateway create-rest-api --name "My API" --region "{{ aws_region }}"
+      register: api_gateway
 
-    - name: Create API Gateway Integration
-      environment:
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      command: aws apigatewayv2 create-integration --api-id ${API_GATEWAY_API_ID} --integration-type AWS_PROXY --integration-method POST --integration-uri arn:aws:lambda:us-west-2:${AWS_ACCOUNT_ID}:function:${LAMBDA_FUNCTION_NAME}:${LAMBDA_QUALIFIER} --payload-format-version 2.0 --region us-west-2
+    - name: Get API Gateway ID
+      set_fact:
+        api_gateway_id: "{{ api_gateway['restApiId'] }}"
 
-    - name: Create API Gateway Route
-      environment:
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      command: aws apigatewayv2 create-route --api-id ${API_GATEWAY_API_ID} --route-key ${API_GATEWAY_ROUTE_KEY} --target integrations/${API_GATEWAY_INTEGRATION_ID} --region us-west-2
+    - name: Create API Gateway deployment
+      become: yes
+      command: aws apigateway create-deployment --rest-api-id "{{ api_gateway_id }}" --stage-name dev
 
-    - name: Create API Gateway Deployment
-      environment:
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      command: aws apigatewayv2 create-deployment --api-id ${API_GATEWAY_API_ID} --region us-west-2
+    - name: Create API Gateway resource
+      become: yes
+      command: aws apigateway create-resource --rest-api-id "{{ api_gateway_id }}" --parent-id "{{ api_gateway['parentId'] }}" --path-part "my-resource"
+      register: api_resource
 
-    - name: Print API Gateway URL
-      environment:
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      command: aws apigatewayv2 get-apis --query 'Items[?Name==`${API_GATEWAY_NAME}`].ApiEndpoint' --output text --region us-west-2
+    - name: Get API Gateway resource ID
+      set_fact:
+        api_resource_id: "{{ api_resource['id'] }}"
+
+    - name: Create API Gateway method
+      become: yes
+      command: aws apigateway put-method --rest-api-id "{{ api_gateway_id }}" --resource-id "{{ api_resource_id }}" --http-method GET --authorization-type NONE
+
+    - name: Create API Gateway integration
+      become: yes
+      command: aws apigateway put-integration --rest-api-id "{{ api_gateway_id }}" --resource-id "{{ api_resource_id }}" --http-method GET --type AWS --integration-http-method POST --uri "arn:aws:apigateway:{{ aws_region }}:lambda:path/2015-03-31/functions/{{ lambda_arn }}/invocations"
+
+    - name: Create API Gateway method response
+      become: yes
+      command: aws apigateway put-method-response --rest-api-id "{{ api_gateway_id }}" --resource-id "{{ api_resource_id }}" --http-method GET --status-code 200 --response-models application/json=Empty
+
+    - name: Create API Gateway integration response
+      become: yes
+      command: aws apigateway put-integration-response --rest-api-id "{{ api_gateway_id }}" --resource-id "{{ api_resource_id }}" --http-method GET --status-code 200 --response-templates application/json=""
+
+   

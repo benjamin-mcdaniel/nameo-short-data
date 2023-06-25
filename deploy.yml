@@ -18,7 +18,7 @@
 
     - name: Create API Gateway
       become: yes
-      community.aws.apigatewayv2_api:
+      community.aws.api_gateway:
         name: "nameoshortdata"
         protocol_type: HTTP
         state: present

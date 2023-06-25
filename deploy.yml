@@ -31,7 +31,7 @@
 
     - name: Create API Gateway deployment
       become: yes
-      community.aws.apigatewayv2_stage:
+      community.aws.api_gateway:
         name: "{{ lookup('env', 'API_GATEWAY_STAGE') }}"
         api_id: "{{ api_gateway_id }}"
         state: present
@@ -89,7 +89,7 @@
 
     - name: Get API Gateway URL
       become: yes
-      community.aws.apigatewayv2_stage_facts:
+      community.aws.api_gateway:
         api_id: "{{ api_gateway_id }}"
         region: "{{ lookup('env', 'AWS_REGION') }}"
       register: api_stage

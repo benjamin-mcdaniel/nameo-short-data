@@ -1,12 +1,13 @@
 ---
 - name: Deploy Lambda Function and API Gateway
   hosts: localhost
+  connection: local
   gather_facts: false
+
   tasks:
     - name: Install AWS CLI
-      pip:
-        name: awscli
-        executable: pip3
+      shell: echo "Install AWS CLI task"
+
 
     - name: Configure AWS CLI
       command: aws configure set aws_access_key_id "{{ aws_access_key_id }}" && aws configure set aws_secret_access_key "{{ aws_secret_access_key }}" && aws configure set region "{{ aws_region }}"

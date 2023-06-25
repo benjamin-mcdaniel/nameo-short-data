@@ -1,0 +1,39 @@
+---
+- name: Deploy Lambda Function and API Gateway
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Install AWS CLI
+      pip:
+        name: awscli
+        executable: pip3
+
+    - name: Configure AWS CLI
+      command: aws configure set aws_access_key_id "{{ aws_access_key_id }}" && aws configure set aws_secret_access_key "{{ aws_secret_access_key }}" && aws configure set region "{{ aws_region }}"
+      register: aws_configure_output
+      changed_when: false
+      failed_when: aws_configure_output.rc != 0
+
+    - name: Package Lambda function
+      command: aws cloudformation package --template-file lambda_template.yaml --s3-bucket "{{ s3_bucket }}" --output-template-file packaged_lambda_template.yaml
+      register: package_output
+      changed_when: false
+      failed_when: package_output.rc != 0
+
+    - name: Deploy Lambda function
+      command: aws cloudformation deploy --template-file packaged_lambda_template.yaml --stack-name "{{ stack_name }}" --capabilities CAPABILITY_IAM
+      register: deploy_output
+      changed_when: false
+      failed_when: deploy_output.rc != 0
+
+    - name: Get API Gateway REST API ID
+      command: aws cloudformation describe-stacks --stack-name "{{ stack_name }}" --query "Stacks[0].Outputs[?OutputKey=='ApiGatewayRestApiId'].OutputValue" --output text
+      register: api_gateway_rest_api_id
+      changed_when: false
+      failed_when: api_gateway_rest_api_id.rc != 0
+
+    - name: Create API Gateway Deployment
+      command: aws apigateway create-deployment --rest-api-id "{{ api_gateway_rest_api_id.stdout }}" --stage-name "{{ api_gateway_stage }}"
+      register: create_deployment_output
+      changed_when: false
+      failed_when: create_deployment_output.rc != 0

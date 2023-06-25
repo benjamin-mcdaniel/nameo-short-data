@@ -1,8 +1,6 @@
 - name: Deploy Lambda Function and API Gateway
   hosts: localhost
   gather_facts: false
-  vars:
-    aws_region: us-west-2
 
   tasks:
     - name: Install AWS CLI
@@ -10,14 +8,9 @@
       pip:
         name: awscli
 
-    - name: Echo AWS Access Key ID
-      debug:
-        msg: "AWS Access Key ID: ${{ secrets.AWS_ACCESS_KEY_ID }}"
-      
-
     - name: Configure AWS CLI
       become: yes
-      command: aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }} && aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }} && aws configure set default.region "{{ aws_region }}"
+      command: aws configure set aws_access_key_id ${{ env.AWS_ACCESS_KEY_ID }} && aws configure set aws_secret_access_key ${{ env.AWS_SECRET_ACCESS_KEY }} && aws configure set default.region ${{ env.AWS_REGION }}
       args:
         executable: /bin/bash
 
@@ -31,7 +24,7 @@
 
     - name: Create API Gateway
       become: yes
-      command: aws apigateway create-rest-api --name "My API" --region "{{ aws_region }}"
+      command: aws apigateway create-rest-api --name "My API" --region ${{ env.AWS_REGION }}
       register: api_gateway
 
     - name: Get API Gateway ID
@@ -57,7 +50,7 @@
 
     - name: Create API Gateway integration
       become: yes
-      command: aws apigateway put-integration --rest-api-id "{{ api_gateway_id }}" --resource-id "{{ api_resource_id }}" --http-method GET --type AWS --integration-http-method POST --uri "arn:aws:apigateway:{{ aws_region }}:lambda:path/2015-03-31/functions/{{ lambda_arn }}/invocations"
+      command: aws apigateway put-integration --rest-api-id "{{ api_gateway_id }}" --resource-id "{{ api_resource_id }}" --http-method GET --type AWS --integration-http-method POST --uri "arn:aws:apigateway:{{ env.AWS_REGION }}:lambda:path/2015-03-31/functions/{{ lambda_arn }}/invocations"
 
     - name: Create API Gateway method response
       become: yes
@@ -70,3 +63,7 @@
     - name: Get API Gateway URL
       become: yes
       command: aws apigateway get-stage --rest-api-id "{{ api_gateway_id }}" --stage-name dev
+
+    - name: Echo AWS Access Key ID
+      debug:
+        msg: "AWS Access Key ID: ${{ env.AWS_ACCESS_KEY_ID }}"

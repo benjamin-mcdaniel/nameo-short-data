@@ -10,10 +10,9 @@
       pip:
         name: awscli
 
-    - name: List aws aws_access_key_id
-      env:
-        key: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      run: echo $key
+    - name: Echo AWS Access Key ID
+      debug:
+        msg: "AWS Access Key ID: ${{ secrets.AWS_ACCESS_KEY_ID }}"
       
 
     - name: Configure AWS CLI

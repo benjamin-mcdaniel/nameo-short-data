@@ -58,16 +58,14 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: ${{ secrets.AWS_REGION }}
       run: |
-        API_NAME="helloworld03"
-        REST_API_ID=$(aws apigateway get-rest-apis --query "items[?name=='$API_NAME'].id" --output text --region ***)
-        
-        if [ -z "$REST_API_ID" ]; then
+          API_NAME="helloworld02"
+          REST_API_ID=$(aws apigateway get-rest-apis --query "items[?name=='$API_NAME'].id" --output text --region ${{ secrets.AWS_REGION }})
+          
+          if [ -z "$REST_API_ID" ]; then
             echo "Creating new API $API_NAME"
             REST_API_ID=$(aws apigateway create-rest-api --name $API_NAME --endpoint-configuration types=REGIONAL --query 'id' --output text)
-        
+            
             # Add the /hello method to the API
-            aws apigateway put-method --rest-api-id $REST_API_ID --resource-id 'root' --http-method 'GET' --authorization-type 'NONE' --region ***
-            aws apigateway put-integration --rest-api-id $REST_API_ID --resource-id 'root' --http-method 'GET' --type 'AWS' --integration-http-method 'POST' --uri "arn:aws:apigateway:***:lambda:path/2015-03-31/functions/arn:aws:lambda:***:123456789012:function:helloworld02/invocations" --region ***
+            aws apigateway put-method --rest-api-id $REST_API_ID --resource-id 'root' --http-method 'GET' --authorization-type 'NONE' --region ${{ secrets.AWS_REGION }}
+            aws apigateway put-integration --rest-api-id $REST_API_ID --resource-id 'root' --http-method 'GET' --type 'AWS' --integration-http-method 'POST' --uri "arn:aws:apigateway:${{ secrets.AWS_REGION }}:lambda:path/2015-03-31/functions/arn:aws:lambda:${{ secrets.AWS_REGION }}:123456789012:function:helloworld02/invocations" --region ${{ secrets.AWS_REGION }}
             aws apigateway put-method-response --rest-api-id $REST_API_ID --resource-id 'root'
-        fi
-      

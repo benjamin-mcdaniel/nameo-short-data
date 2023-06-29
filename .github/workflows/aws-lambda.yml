@@ -38,6 +38,7 @@ jobs:
           --zip-file fileb://lambda_code.zip \
           --handler lambda_function.lambda_handler \
           --role arn:aws:iam::847105105358:role/mcdaniel_lambda
+          --region ${{ secrets.AWS_REGION }}}
 
     - name: Deploy to API Gateway
       run: |

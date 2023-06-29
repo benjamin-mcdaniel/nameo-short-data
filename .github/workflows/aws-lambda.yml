@@ -23,6 +23,11 @@ jobs:
         pip install --upgrade pip
         pip install -r requirements.txt
 
+    - name: Create lambda_code.zip
+      run: |
+          zip lambda_code.zip lambda_function.py
+
+
     - name: Deploy to AWS Lambda
       run: |
         export AWS_ACCESS_KEY_ID="${{ secrets.AWS_ACCESS_KEY_ID }}"

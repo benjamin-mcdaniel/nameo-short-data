@@ -70,7 +70,7 @@ jobs:
               RESOURCE_ID=$(aws apigateway create-resource --rest-api-id $REST_API_ID --parent-id $ROOT_RESOURCE_ID --path-part hello --output text --region $AWS_REGION)
               
               # Add the GET method to the /hello resource
-              aws apigateway put-method --rest-api-id $REST_API_ID --resource-id $RESOURCE_ID --http-method GET --authorization-type NONE --region $AWS_REGION
+              aws apigateway put-method --rest-api-id $REST_API_ID --resource-id $RESOURCE_ID --http-method GET --authorization-type NONE --request-parameters method.request.querystring.input={true} --region $AWS_REGION
               
               # Set up the integration between API Gateway and Lambda
               FUNCTION_NAME="helloworld02"

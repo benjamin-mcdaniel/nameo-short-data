@@ -34,12 +34,12 @@ jobs:
           AWS_REGION: ${{ secrets.AWS_REGION }}
         run: |
           FUNCTION_NAME="helloworld02"
-          aws lambda get-function --function-name $FUNCTION_NAME --region ${{ secrets.AWS_REGION }} >/dev/null 2>&1
+          aws lambda get-function --function-name $FUNCTION_NAME --region $AWS_REGION >/dev/null 2>&1
           if [ $? -eq 0 ]; then
               echo "Function $FUNCTION_NAME already exists. Updating..."
               aws lambda update-function-code --function-name $FUNCTION_NAME \
                 --zip-file fileb://lambda_code.zip \
-                --region ${{ secrets.AWS_REGION }}
+                --region $AWS_REGION
           else
               echo "Creating new function $FUNCTION_NAME"
               aws lambda create-function --function-name $FUNCTION_NAME \
@@ -47,39 +47,38 @@ jobs:
                 --zip-file fileb://lambda_code.zip \
                 --handler lambda_function.lambda_handler \
                 --role arn:aws:iam::847105105358:role/mcdaniel_lambda \
-                --region ${{ secrets.AWS_REGION }}
+                --region $AWS_REGION
           fi
 
       - name: Deploy to API Gateway
         env:
-            AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-            AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-            AWS_REGION: ${{ secrets.AWS_REGION }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
         run: |
-            API_NAME="helloworld02"
-            REST_API_ID=$(aws apigateway get-rest-apis --query "items[?name=='$API_NAME'].id" --output text --region ${{ secrets.AWS_REGION }})
+          API_NAME="helloworld02"
+          REST_API_ID=$(aws apigateway get-rest-apis --query "items[?name=='$API_NAME'].id" --output text --region $AWS_REGION)
         
-            if [ -z "$REST_API_ID" ]; then
-              echo "Creating new API $API_NAME"
-              REST_API_ID=$(aws apigateway create-rest-api --name $API_NAME --endpoint-configuration types=REGIONAL --query 'id' --output text)
+          if [ -z "$REST_API_ID" ]; then
+            echo "Creating new API $API_NAME"
+            REST_API_ID=$(aws apigateway create-rest-api --name $API_NAME --endpoint-configuration types=REGIONAL --query 'id' --output text --region $AWS_REGION)
         
-              # Create the /hello resource
-              PARENT_RESOURCE_ID=$(aws apigateway get-resources --rest-api-id $REST_API_ID --query "items[?path=='/'].id" --output text --region ${{ secrets.AWS_REGION }})
-              RESOURCE_ID=$(aws apigateway create-resource --rest-api-id $REST_API_ID --parent-id $PARENT_RESOURCE_ID --path-part hello --output text --region ${{ secrets.AWS_REGION }})
+            # Create the /hello resource
+            PARENT_RESOURCE_ID=$(aws apigateway get-resources --rest-api-id $REST_API_ID --query "items[?path=='/'].id" --output text --region $AWS_REGION)
+            RESOURCE_ID=$(aws apigateway create-resource --rest-api-id $REST_API_ID --parent-id $PARENT_RESOURCE_ID --path-part hello --output text --region $AWS_REGION)
         
-              # Add the GET method to the /hello resource
-              aws apigateway put-method --rest-api-id $REST_API_ID --resource-id $RESOURCE_ID --http-method GET --authorization-type NONE --region ${{ secrets.AWS_REGION }}
+            # Add the GET method to the /hello resource
+            aws apigateway put-method --rest-api-id $REST_API_ID --resource-id $RESOURCE_ID --http-method GET --authorization-type NONE --region $AWS_REGION
         
-              # Set up the integration between API Gateway and Lambda
-              FUNCTION_NAME="helloworld02"
-              LAMBDA_ARN=$(aws lambda get-function --function-name $FUNCTION_NAME --query 'Configuration.FunctionArn' --output text --region ${{ secrets.AWS_REGION }})
-              aws apigateway put-integration --rest-api-id $REST_API_ID --resource-id $RESOURCE_ID --http-method GET --type AWS --integration-http-method POST --uri "arn:aws:apigateway:${{ secrets.AWS_REGION }}:lambda:path/2015-03-31/functions/$LAMBDA_ARN/invocations" --region ${{ secrets.AWS_REGION }}
+            # Set up the integration between API Gateway and Lambda
+            FUNCTION_NAME="helloworld02"
+            LAMBDA_ARN=$(aws lambda get-function --function-name $FUNCTION_NAME --query 'Configuration.FunctionArn' --output text --region $AWS_REGION)
+            aws apigateway put-integration --rest-api-id $REST_API_ID --resource-id $RESOURCE_ID --http-method GET --type AWS --integration-http-method POST --uri "arn:aws:apigateway:${AWS_REGION}:lambda:path/2015-03-31/functions/$LAMBDA_ARN/invocations" --region $AWS_REGION
         
-              # Add the method response and integration response
-              aws apigateway put-method-response --rest-api-id $REST_API_ID --resource-id $RESOURCE_ID --http-method GET --status-code 200 --response-models application/json='Empty' --region ${{ secrets.AWS_REGION }}
-              aws apigateway put-integration-response --rest-api-id $REST_API_ID --resource-id $RESOURCE_ID --http-method GET --status-code 200 --response-templates application/json='' --region ${{ secrets.AWS_REGION }}
-            else
-              echo "API $API_NAME already exists. Updating..."
-              aws apigateway create-deployment --rest-api-id $REST_API_ID --stage-name prod --region ${{ secrets.AWS_REGION }}
-            fi
-        
+            # Add the method response and integration response
+            aws apigateway put-method-response --rest-api-id $REST_API_ID --resource-id $RESOURCE_ID --http-method GET --status-code 200 --response-models application/json='Empty' --region $AWS_REGION
+            aws apigateway put-integration-response --rest-api-id $REST_API_ID --resource-id $RESOURCE_ID --http-method GET --status-code 200 --response-templates application/json='' --region $AWS_REGION
+          else
+            echo "API $API_NAME already exists. Updating..."
+            aws apigateway create-deployment --rest-api-id $REST_API_ID --stage-name prod --region $AWS_REGION
+          fi

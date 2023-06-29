@@ -73,7 +73,7 @@ jobs:
             # Set up the integration between API Gateway and Lambda
             FUNCTION_NAME="helloworld02"
             LAMBDA_ARN=$(aws lambda get-function --function-name $FUNCTION_NAME --query 'Configuration.FunctionArn' --output text --region $AWS_REGION)
-            aws apigateway put-integration --rest-api-id $REST_API_ID --resource-id $RESOURCE_ID --http-method GET --type AWS --integration-http-method POST --uri "arn:aws:apigateway:${AWS_REGION}:lambda:path/2015-03-31/functions/$LAMBDA_ARN/invocations" --region $AWS_REGION
+            aws apigateway put-integration --rest-api-id $REST_API_ID --resource-id $RESOURCE_ID --http-method GET --type AWS_PROXY --uri "arn:aws:apigateway:${AWS_REGION}:lambda:path/2015-03-31/functions/$LAMBDA_ARN/invocations" --region $AWS_REGION
         
             # Add the method response and integration response
             aws apigateway put-method-response --rest-api-id $REST_API_ID --resource-id $RESOURCE_ID --http-method GET --status-code 200 --response-models application/json='Empty' --region $AWS_REGION
@@ -82,3 +82,4 @@ jobs:
             echo "API $API_NAME already exists. Updating..."
             aws apigateway create-deployment --rest-api-id $REST_API_ID --stage-name prod --region $AWS_REGION
           fi
+          

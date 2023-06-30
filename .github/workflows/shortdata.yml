@@ -35,8 +35,9 @@ jobs:
             AWS_REGION: ${{ secrets.AWS_REGION }}
         run: |
             FUNCTION_NAME="nameoshortdata"
-            aws lambda get-function --function-name $FUNCTION_NAME --region ${{ secrets.AWS_REGION }} >/dev/null 2>&1 --debug
-            echo "::set-output name=function_exists::$(if [ $? -eq 0 ]; then echo "true"; else echo "false"; fi)"
+            function_check=$(aws lambda get-function --function-name $FUNCTION_NAME --region ${{ secrets.AWS_REGION }})
+            echo "::set-output name=function_exists::$(if [ -n "$function_check" ]; then echo 'true'; else echo 'false'; fi)"
+
         
       - name: Deploy Lambda function
         if: steps.lambda_check.outputs.function_exists == 'false'

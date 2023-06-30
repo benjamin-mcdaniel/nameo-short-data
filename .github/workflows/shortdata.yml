@@ -27,7 +27,19 @@ jobs:
         run: |
           zip main.zip main.py
 
-      - name: Deploy to AWS Lambda
+      - name: Check if Lambda function exists
+        id: lambda_check
+        env:
+            AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+            AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+            AWS_REGION: ${{ secrets.AWS_REGION }}
+        run: |
+            FUNCTION_NAME="nameoshortdata"
+            aws lambda get-function --function-name $FUNCTION_NAME --region ${{ secrets.AWS_REGION }} >/dev/null 2>&1
+            echo "::set-output name=function_exists::$(if [ $? -eq 0 ]; then echo "true"; else echo "false"; fi)"
+        
+      - name: Deploy Lambda function
+        if: steps.lambda_check.outputs.function_exists == 'false'
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -35,12 +47,14 @@ jobs:
         run: |
           FUNCTION_NAME="nameoshortdata"
           aws lambda get-function --function-name $FUNCTION_NAME --region $AWS_REGION >/dev/null 2>&1
-          if [ $? -eq 0 ]; then
               echo "Function $FUNCTION_NAME already exists. Updating..."
               aws lambda update-function-code --function-name $FUNCTION_NAME \
                 --zip-file fileb://lambda_code.zip \
                 --region $AWS_REGION
-          else
+
+      - name: Update Lambda function
+        if: steps.lambda_check.outputs.function_exists == 'true'
+        run: |
               echo "Creating new function $FUNCTION_NAME"
               aws lambda create-function --function-name $FUNCTION_NAME \
                 --runtime python3.8 \
@@ -48,32 +62,44 @@ jobs:
                 --handler lambda_function.lambda_handler \
                 --role arn:aws:iam::847105105358:role/mcdaniel_lambda \
                 --region $AWS_REGION
-          fi
 
   
-      - name: Create or Update API Gateway
+      - name: Check if API Gateway exists
+        id: apigateway_check
         env:
             AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
             AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
             AWS_REGION: ${{ secrets.AWS_REGION }}
         run: |
-          API_NAME="nameoshortdata"
-          aws apigateway get-rest-apis --query "items[?name=='$API_NAME'].id" --output text --region $AWS_REGION
-            if [ $? -eq 0 ]; then
-                echo "API $API_NAME already exists. Updating..."
-                aws apigateway update-rest-api --rest-api-id $API_ID --patch-operations op=replace,path=/name,value=$API_NAME --region $AWS_REGION
-            else
-                echo "Creating new API $API_NAME"
-                aws apigateway create-rest-api --name $API_NAME --endpoint-configuration types=REGIONAL --region $AWS_REGION
-            fi
+            API_NAME="nameoshortdata"
+            aws apigateway get-rest-apis --query "items[?name=='$API_NAME'].id" --output text --region $AWS_REGION >/dev/null 2>&1
+            echo "::set-output name=apigateway_exists::$(if [ $? -eq 0 ]; then echo "true"; else echo "false"; fi)"
+
+      - name: Update API Gateway
+        if: steps.apigateway_check.outputs.apigateway_exists == 'true'
+        env:
+            AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+            AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+            AWS_REGION: ${{ secrets.AWS_REGION }}
+        run: |
+            API_NAME="nameoshortdata"
+            echo "API $API_NAME already exists. Updating..."
+            API_ID=$(aws apigateway get-rest-apis --query "items[?name=='$API_NAME'].id" --output text --region $AWS_REGION)
+            aws apigateway update-rest-api --rest-api-id $API_ID --patch-operations op=replace,path=/name,value=$API_NAME --region $AWS_REGION
+
+      - name: Create API Gateway
+        if: steps.apigateway_check.outputs.apigateway_exists == 'false'
+        env:
+            AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+            AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+            AWS_REGION: ${{ secrets.AWS_REGION }}
+        run: |
+            API_NAME="nameoshortdata"
+            echo "Creating new API $API_NAME"
+            aws apigateway create-rest-api --name $API_NAME --endpoint-configuration types=REGIONAL --region $AWS_REGION
 
 
 
 
 
 
-
-
-
-
-            

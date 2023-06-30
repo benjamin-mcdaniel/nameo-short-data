@@ -50,12 +50,6 @@ jobs:
                 --region $AWS_REGION
           fi
 
-          - name: Create or Update API Gateway
-          uses: aws-actions/aws-cli@v2
-          with:
-            args: |
-              apigateway get-rest-apis --query "items[?name=='nameoshortdata'].id" --output text --region ${{ secrets.AWS_REGION }}
-          id: api_check
   
       - name: Create or Update API Gateway
         env:

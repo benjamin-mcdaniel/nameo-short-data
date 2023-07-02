@@ -6,7 +6,7 @@ on:
       - main # change this to your default branch
 
 jobs:
-  deploy:
+  Deploy:
     runs-on: ubuntu-latest
 
     steps:
@@ -26,17 +26,22 @@ jobs:
       - name: Create main.py
         run: |
           zip main.zip main.py
-
+  
       - name: Check if Lambda function exists
         id: lambda_check
-        env:
-            AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-            AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-            AWS_REGION: ${{ secrets.AWS_REGION }}
         run: |
             FUNCTION_NAME="nameoshortdata"
-            function_check=$(aws lambda get-function --function-name $FUNCTION_NAME --region ${{ secrets.AWS_REGION }})
-            echo "::set-output name=function_exists::$(if [ -n "$function_check" ]; then echo 'true'; else echo 'false'; fi)"
+            function_check=$(aws lambda get-function --function-name $FUNCTION_NAME --region *** 2>&1)
+            if [ $? -eq 0 ]; then
+              echo "::set-output name=function_exists::true"
+            else
+              echo "::set-output name=function_exists::false"
+            fi
+  
+      - name: Use the output
+        run: |
+            echo "Function exists: ${{ steps.lambda_check.outputs.function_exists }}"
+        
 
         
       - name: Deploy Lambda function

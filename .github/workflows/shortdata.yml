@@ -31,7 +31,7 @@ jobs:
         id: lambda_check
         run: |
             FUNCTION_NAME="nameoshortdata"
-            function_check=$(aws lambda get-function --function-name $FUNCTION_NAME --region *** 2>&1)
+            function_check=$(aws lambda get-function --function-name $FUNCTION_NAME --region ${{ secrets.AWS_REGION }} 2>&1)
             if [ $? -eq 0 ]; then
               echo "::set-output name=function_exists::true"
             else

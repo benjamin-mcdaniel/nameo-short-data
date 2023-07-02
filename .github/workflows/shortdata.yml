@@ -31,13 +31,13 @@ jobs:
         id: lambda_check
         run: |
             FUNCTION_NAME="nameoshortdata"
-            # ouput function name
-            echo "::set-output name=function_name::$FUNCTION_NAME"
+            # Save function name as state
+            echo "$FUNCTION_NAME" >> $GITHUB_ENV
             function_check=$(aws lambda get-function --function-name $FUNCTION_NAME --region ${{ secrets.AWS_REGION }} 2>&1)
             if [ $? -eq 0 ]; then
-              echo "::set-output name=function_exists::true"
+            echo "::save-state name=function_exists::true"
             else
-              echo "::set-output name=function_exists::false"
+            echo "::save-state name=function_exists::false"
             fi
   
       - name: Use the output

@@ -33,14 +33,14 @@ jobs:
             FUNCTION_NAME="nameoshortdata"
             function_check=$(aws lambda get-function --function-name $FUNCTION_NAME --region ${{ secrets.AWS_REGION }} 2>&1)
             if [ $? -eq 0 ]; then
-            echo "::save-state name=function_exists::true"
+            echo "::set-env name=function_exists::true"
             else
-            echo "::save-state name=function_exists::false"
+            echo "::set-env name=function_exists::false"
             fi
   
       - name: Use the output
         run: |
-            echo "Function exists: ${{ steps.lambda_check.outputs.function_exists }}"
+            echo "Function exists: ${{ env.function_exists }}"
         
 
         
